@@ -1,0 +1,91 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:longClickable="true"
+    android:minHeight="70dp"
+    android:id="@+id/single_row_layout"
+    android:padding="10dp">
+
+    <ImageView
+        android:id="@+id/contactImage"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_gravity="center"
+        android:layout_margin="4dp"
+        android:scaleType="centerCrop"
+        android:visibility="visible" />
+
+    <LinearLayout
+        android:id="@+id/name_time"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="12dp"
+        android:layout_toRightOf="@id/contactImage"
+        android:layout_marginStart="12dp"
+        android:layout_toEndOf="@id/contactImage"
+        android:orientation="horizontal"
+        android:paddingBottom="1dp"
+        android:visibility="visible"
+        android:weightSum="20">
+
+        <TextView
+            android:id="@+id/smsReceivers"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:textDirection="locale"
+            android:textAlignment="gravity"
+            android:layout_weight="22"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:text="Hola"
+            android:textIsSelectable="false"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/createdAtTime"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_weight="0"
+            android:ellipsize="end"
+            android:paddingTop="8dp"
+            android:singleLine="true"
+            android:text="22 Apr 08:10 AM"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/message"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginRight="48dp"
+        android:layout_marginEnd="48dp"
+        android:layout_marginLeft="12dp"
+        android:layout_toEndOf="@+id/contactImage"
+        android:layout_marginStart="12dp"
+        android:layout_toRightOf="@+id/contactImage"
+        android:layout_below="@id/name_time"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingBottom="3dp"
+        android:paddingTop="3dp"
+        android:textDirection="locale"
+        android:textAlignment="gravity"
+        android:textColor="#999"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/unreadSmsCount"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_gravity="end"
+        android:layout_marginRight="2dp"
+        android:layout_marginEnd="2dp"
+        android:layout_below="@id/message"
+        android:textColor="#f00"
+        android:textSize="9sp"
+        android:textStyle="bold"
+        android:layout_alignParentRight="true"
+        android:visibility="visible" />
+
+</RelativeLayout>

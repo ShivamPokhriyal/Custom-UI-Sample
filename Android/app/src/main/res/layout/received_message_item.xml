@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:paddingTop="8dp">
+
+    <de.hdodenhof.circleimageview.CircleImageView
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:id="@+id/profile_image"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        android:layout_marginLeft="8dp"
+        android:src="@drawable/delete"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:id="@+id/profile_name"
+        android:text="Shivam"
+        app:layout_constraintLeft_toRightOf="@id/profile_image"
+        android:layout_marginLeft="8dp"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginTop="4dp"/>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintTop_toBottomOf="@id/profile_name"
+        app:layout_constraintLeft_toRightOf="@id/profile_image"
+        android:layout_marginLeft="8dp"
+        android:id="@+id/message_box">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/message_body"
+            android:background="@drawable/rounded_textview"
+            android:maxWidth="240dp"
+            android:padding="8dp"
+            android:textColor="#000"
+            android:text="HIHI"/>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/attachment_view"
+            android:visibility="gone">
+            <include layout="@layout/attachment_view"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/message_time"
+        android:text="10:00"
+        android:textSize="10sp"
+        app:layout_constraintLeft_toRightOf="@id/message_box"
+        android:layout_marginLeft="4dp"
+        app:layout_constraintBottom_toBottomOf="@id/message_box"/>
+
+
+</android.support.constraint.ConstraintLayout>
