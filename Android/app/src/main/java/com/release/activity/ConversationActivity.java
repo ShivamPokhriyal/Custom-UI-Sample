@@ -18,6 +18,7 @@ import android.os.Bundle;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.MenuItem;
@@ -25,6 +26,7 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.applozic.mobicomkit.Applozic;
@@ -40,6 +42,7 @@ import com.applozic.mobicomkit.exception.ApplozicException;
 import com.applozic.mobicomkit.listners.ApplozicUIListener;
 import com.applozic.mobicomkit.listners.MediaUploadProgressHandler;
 import com.applozic.mobicomkit.listners.MessageListHandler;
+import com.applozic.mobicommons.commons.core.utils.DateUtils;
 import com.applozic.mobicommons.json.GsonUtils;
 import com.applozic.mobicommons.people.channel.Channel;
 import com.applozic.mobicommons.people.contact.Contact;
@@ -70,16 +73,27 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
     private static final int REQUEST_CODE = 7;
     private static final int PICK_FILE = 4;
 
+    private Toolbar toolbar;
+    private TextView toolbarTitle;
+    private TextView toolbarStatus;
+
     private static final String TAG = "CONVERSATION";
+
+    private boolean isGroup = false;
+    private Channel mChannel;
+    private Contact mContact;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_conversation);
+        toolbar = findViewById(R.id.conversation_activity_toolbar);
+        toolbarTitle = findViewById(R.id.conversation_activity_toolbar_title);
+        toolbarStatus = findViewById(R.id.conversation_activity_toolbar_status);
+        toolbarStatus.setVisibility(View.GONE);
+        setSupportActionBar(toolbar);
 
         processIntent();
-
-//        getSupportActionBar().setTitle(getIntent().getStringExtra("NAME"));
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setDisplayShowHomeEnabled(true);
 //        type = getIntent().getStringExtra("TYPE");
@@ -109,14 +123,14 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
         sendTextButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (TextUtils.isEmpty(sendMessageContent.getText())) {
+                if (TextUtils.isEmpty(sendMessageContent.getText().toString().trim())) {
                     Toast.makeText(ConversationActivity.this, "Empty Text", Toast.LENGTH_SHORT).show();
                 } else {
                     //
                     if (type.equalsIgnoreCase("Contact")) {
-                        new MessageBuilder(ConversationActivity.this).setMessage(sendMessageContent.getText().toString()).setTo(messageList.get(0).getContactIds()).send();
+                        new MessageBuilder(ConversationActivity.this).setMessage(sendMessageContent.getText().toString().trim()).setTo(messageList.get(0).getContactIds()).send();
                     } else {
-                        new MessageBuilder(ConversationActivity.this).setMessage(sendMessageContent.getText().toString()).setGroupId(messageList.get(0).getGroupId()).send();
+                        new MessageBuilder(ConversationActivity.this).setMessage(sendMessageContent.getText().toString().trim()).setGroupId(messageList.get(0).getGroupId()).send();
                     }
                 }
             }
@@ -180,6 +194,7 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
                 type = intent.getStringExtra("TYPE");
                 if (type.equals("CHANNEL")) {
                     int channelId = intent.getIntExtra("ID", 12345);
+                    isGroup = true;
                     getMessageListForChannel(channelId);
                 } else {
                     String contactId = intent.getStringExtra("ID");
@@ -207,7 +222,10 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
 
     public void getMessageListForContact(String contactId) {
         final Contact contact = new AppContactService(ConversationActivity.this).getContactById(contactId);
-        getSupportActionBar().setTitle(contact.getDisplayName());
+        mContact = contact;
+        toolbarTitle.setText(contact.getDisplayName());
+        toolbarStatus.setVisibility(View.VISIBLE);
+        toolbarStatus.setText(mContact.isOnline()?"ONLINE":"Last seen: "+DateUtils.getDateAndTimeForLastSeen(mContact.getLastSeenAt()));
         ApplozicConversation.getMessageListForContact(ConversationActivity.this, (new ContactDatabase(ConversationActivity.this)).getContactById(contactId), null, new MessageListHandler() {
             @Override
             public void onResult(List<Message> messageList, ApplozicException e) {
@@ -222,7 +240,8 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
 
     public void getMessageListForChannel(int channelId) {
         final Channel channel = ChannelService.getInstance(ConversationActivity.this).getChannelInfo(channelId);
-        getSupportActionBar().setTitle(channel.getName());
+        mChannel = channel;
+        toolbarTitle.setText(channel.getName());
         ApplozicConversation.getMessageListForChannel(ConversationActivity.this, ChannelDatabaseService.getInstance(ConversationActivity.this).getChannelByChannelKey(channelId), null, new MessageListHandler() {
             @Override
             public void onResult(List<Message> messageList, ApplozicException e) {
@@ -480,10 +499,12 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
 
     public void updateAdapterOnDelivered(Message message) {
         //check message in message list
-        int index = messageList.indexOf(message);
-        if (index != -1) {
-            messageList.set(index, message);
-            conversationAdapter.notifyDataSetChanged();
+        if(isMessageForAdapter(message)){
+            int index = messageList.indexOf(message);
+            if (index != -1) {
+                messageList.set(index, message);
+                conversationAdapter.notifyDataSetChanged();
+            }
         }
        /* if(isMessageForAdapter(message)) {
             for (int i = messageList.size() - 1; i >= 0; i--) {
@@ -520,12 +541,24 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
     protected void onResume() {
         super.onResume();
         Applozic.connectPublish(this);
+        if(isGroup){
+            Applozic.subscribeToTyping(ConversationActivity.this,mChannel, null);
+        }else{
+            Applozic.subscribeToTyping(ConversationActivity.this, null, mContact);
+        }
+
         Applozic.getInstance(this).registerUIListener(this);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+        if(isGroup){
+            Applozic.unSubscribeToTyping(ConversationActivity.this,mChannel, null);
+        }else{
+            Applozic.unSubscribeToTyping(ConversationActivity.this, null, mContact);
+        }
+
         Applozic.disconnectPublish(this);
         Applozic.getInstance(this).unregisterUIListener();
     }
@@ -594,20 +627,55 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
     public void onConversationDeleted(String userId, Integer channelKey, String response) {
         Log.d("Checking ", "..................................." + "CONVO DEL CALLED" + "...................................");
     }
-
     @Override
     public void onUpdateTypingStatus(String userId, String isTyping) {
-
+        Log.d("Checking","..................................." + "TYPING STATUS" + "...................................");
+        Log.d("Checking", "Typing Status "+isTyping);
+        if(isGroup){
+            Log.d("Checking", "Typing yess ");
+            if(ChannelService.getInstance(ConversationActivity.this).isUserAlreadyPresentInChannel(mChannel.getKey(),userId)){
+                Log.d("Checking", "Typing yesssssss "+isTyping);
+                if (isTyping.equals("1")) {
+                    toolbarStatus.setVisibility(View.VISIBLE);
+                    toolbarStatus.setText(userId+" TYPING");
+                } else {
+                    toolbarStatus.setText(null);
+                    toolbarStatus.setVisibility(View.GONE);
+                }
+            }
+        }else {
+            if (userId.equals(mContact.getContactIds())) {
+                if (isTyping.equals("1")) {
+                    toolbarStatus.setVisibility(View.VISIBLE);
+                    toolbarStatus.setText("TYPING.....");
+                } else {
+                    toolbarStatus.setText(mContact.isOnline()?"ONLINE":"Last seen: "+DateUtils.getDateAndTimeForLastSeen(mContact.getLastSeenAt()));
+                }
+            }
+        }
+//        ChannelService.getInstance(this).isUserAlreadyPresentInChannel(mChannel.getKey(),userId);
     }
 
     @Override
     public void onUpdateLastSeen(String userId) {
-
+        Log.d("Checking","..................................." + "LAST SEEN STATUS" + "...................................");
+        if(!isGroup){
+            if(userId.equals(mContact.getUserId())){
+                if(mContact.isOnline()){
+                    toolbarStatus.setVisibility(View.VISIBLE);
+                    toolbarStatus.setText("ONLINE");
+                }else{
+                    toolbarStatus.setVisibility(View.VISIBLE);
+                    toolbarStatus.setText("Last seen: " + DateUtils.getDateAndTimeForLastSeen(mContact.getLastSeenAt()));
+                }
+            }
+        }
     }
 
     @Override
     public void onMqttDisconnected() {
         Log.d("Checking","..................................." + "MQQQT DISCONNECTED" + "...................................");
+        Applozic.connectPublish(ConversationActivity.this);
     }
 
     @Override

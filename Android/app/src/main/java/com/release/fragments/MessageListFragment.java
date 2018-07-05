@@ -252,6 +252,7 @@ public class MessageListFragment extends Fragment implements ApplozicUIListener{
     @Override
     public void onMqttDisconnected() {
         Log.d("MyTest", "Mqtt disconnected ");
+        Applozic.connectPublish(getActivity());
     }
 
     @Override

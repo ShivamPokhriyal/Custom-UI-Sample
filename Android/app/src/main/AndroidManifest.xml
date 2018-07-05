@@ -113,6 +113,7 @@
 
         <activity android:name=".activity.ConversationActivity"
             android:launchMode="singleTop"
+            android:theme="@style/Theme.ConversationActivity"
             android:parentActivityName=".MainActivity"></activity>
     </application>
 
