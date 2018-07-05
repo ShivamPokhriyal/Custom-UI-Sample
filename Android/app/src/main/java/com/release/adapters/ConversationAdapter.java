@@ -41,6 +41,7 @@ import com.applozic.mobicommons.commons.image.ImageUtils;
 import com.applozic.mobicommons.people.channel.Channel;
 import com.applozic.mobicommons.people.contact.Contact;
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.RequestOptions;
 import com.release.BuildConfig;
 import com.release.R;
 import com.release.Utility.PhotoFullPopupWindow;
@@ -145,6 +146,7 @@ public class ConversationAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 holder.locationViewForAttachment.setVisibility(View.GONE);
                 holder.audioViewForAttachment.setVisibility(View.GONE);
                 holder.attachmentView.setVisibility(View.GONE);
+                holder.attachmentProgressText.setVisibility(View.GONE);
                 holder.messageBody.setVisibility(View.GONE);
 
                 holder.messageTime.setText(com.applozic.mobicommons.commons.core.utils.DateUtils.getFormattedDateAndTime(message.getCreatedAtTime()));
@@ -161,84 +163,70 @@ public class ConversationAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                     holder.status.setImageResource(R.drawable.delivered_status);
                 }
 
-                if(message.hasAttachment()){
-                    Log.d("Attachment ChckMessage ",message.toString());
+                if(message.hasAttachment()) {
+                    Log.d("Attachment ChckMessage ", message.toString());
                     holder.attachmentView.setVisibility(View.VISIBLE);
-                    //Checking for audio, video, image
+                    if (message.getFilePaths() == null) {
+                        if (message.getAttachmentType().equals(Message.VIDEO)) {
+                            downloadMessage(message,holder.videoViewForAttachment,holder.attachmentProgress, holder.attachmentProgressText);
+                        } else if (message.getAttachmentType().equals(Message.AUDIO)) {
 
-//                    if (message.getContentType() == 1) {
-//                        holder.imageViewForAttachment.setImageResource(R.drawable.delete);
-//                        String fileName = "Image";
-//                        holder.messageBody.setText(fileName);
-//                        holder.imageViewForAttachment.setVisibility(View.VISIBLE);
-//
-//                        final String imgPath = message.getFilePaths().get(0);
-//                        Glide.with(mContext).load(imgPath).
-//                                thumbnail(0.5f).
-//                                into(holder.imageViewForAttachment);
-//                        holder.imageViewForAttachment.setOnClickListener(new View.OnClickListener() {
-//                            @Override
-//                            public void onClick(View view) {
-//                                new PhotoFullPopupWindow(mContext, R.layout.popup_photo_full, holder.imageViewForAttachment, imgPath, null);
-//                            }
-//                        });
-//                    }
+                        } else if (message.getAttachmentType().equals(Message.CONTACT)) {
 
-                    if(!message.isSentToServer()){
-                        //HANDLE progress manager
-                        if(message.getAttachmentType().equals(Message.VIDEO)){
+                        } else if (message.getAttachmentType().equals(Message.LOCATION)) {
 
-                        }else if(message.getAttachmentType().equals(Message.AUDIO)){
+                        } else if (message.getAttachmentType().equals(Message.OTHER)) {
 
-                        }else if(message.getAttachmentType().equals(Message.CONTACT)){
-
-                        }else if(message.getAttachmentType().equals(Message.LOCATION)){
-
-                        }else if(message.getAttachmentType().equals(Message.OTHER)){
-
-                        }else{
+                        } else {
                             //image
-
+                            downloadMessage(message,holder.imageViewForAttachment,holder.attachmentProgress,holder.attachmentProgressText);
                         }
-                    }
+                    } else {
+                        if (message.getAttachmentType().equals(Message.VIDEO)) {
+                            holder.videoViewForAttachment.setVisibility(View.VISIBLE);
 
-                    if(message.getAttachmentType().equals(Message.VIDEO)){
-                        holder.videoViewForAttachment.setVisibility(View.VISIBLE);
-                        final String videoPath = message.getFilePaths().get(0);
-                        Glide.with(mContext)
-                                .load(Uri.fromFile(new File(videoPath)))
-                                .into(holder.videoViewForAttachment);
-                        holder.videoViewForAttachment.setOnClickListener(new View.OnClickListener() {
-                            @Override
-                            public void onClick(View view) {
-                                Intent intent = new Intent(Intent.ACTION_VIEW);
-                                final File file = new File(videoPath);
-                                intent.setDataAndType( FileProvider.getUriForFile(mContext,
-                                        BuildConfig.APPLICATION_ID + ".provider",
-                                        file), "video/*");
-                                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                                mContext.startActivity(intent);
-                            }
-                        });
-                    }else if(message.getAttachmentType().equals(Message.AUDIO)){
-                        holder.audioViewForAttachment.setVisibility(View.VISIBLE);
-                        String audioPath = message.getFilePaths().get(0);
-                        handleAudio(holder.forwardButton, holder.pauseButton, holder.playButton, holder.rewindButton,
-                                holder.audioName, holder.startTime, holder.finalTime, holder.seekBar, "AUDIO", audioPath);
+                            final String videoPath = message.getFilePaths().get(0);
+                            Glide.with(mContext)
+                                    .load(Uri.fromFile(new File(videoPath)))
+                                    .into(holder.videoViewForAttachment);
+                            holder.videoViewForAttachment.setOnClickListener(new View.OnClickListener() {
+                                @Override
+                                public void onClick(View view) {
+                                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                                    final File file = new File(videoPath);
+                                    intent.setDataAndType(FileProvider.getUriForFile(mContext,
+                                            BuildConfig.APPLICATION_ID + ".provider",
+                                            file), "video/*");
+                                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                                    mContext.startActivity(intent);
+                                }
+                            });
+                        } else if (message.getAttachmentType().equals(Message.AUDIO)) {
+                            holder.audioViewForAttachment.setVisibility(View.VISIBLE);
+                            String audioPath = message.getFilePaths().get(0);
+                            handleAudio(holder.forwardButton, holder.pauseButton, holder.playButton, holder.rewindButton,
+                                    holder.audioName, holder.startTime, holder.finalTime, holder.seekBar, "AUDIO", audioPath);
 
-                    }else if(message.getAttachmentType().equals(Message.CONTACT)){
+                        } else if (message.getAttachmentType().equals(Message.CONTACT)) {
 
-                    }else if(message.getAttachmentType().equals(Message.LOCATION)){
+                        } else if (message.getAttachmentType().equals(Message.LOCATION)) {
 
-                    }else if(message.getAttachmentType().equals(Message.OTHER)){
+                        } else if (message.getAttachmentType().equals(Message.OTHER)) {
 
-                    }else {
-                        //image
-                        holder.imageViewForAttachment.setVisibility(View.VISIBLE);
-                        final String imgPath = message.getFilePaths().get(0);
-                        Glide.with(mContext).load(imgPath).
-                                thumbnail(0.5f).
-                                into(holder.imageViewForAttachment);
+                        } else {
+                            //image
+                            holder.imageViewForAttachment.setVisibility(View.VISIBLE);
+                            final String imgPath = message.getFilePaths().get(0);
+                            Glide.with(mContext).load(imgPath).
+                                    thumbnail(0.5f).
+                                    into(holder.imageViewForAttachment);
+                            holder.imageViewForAttachment.setOnClickListener(new View.OnClickListener() {
+                                @Override
+                                public void onClick(View view) {
+                                    new PhotoFullPopupWindow(mContext, R.layout.popup_photo_full, holder.imageViewForAttachment, imgPath, null);
+                                }
+                            });
+                        }
                     }
                 }else {
                     holder.messageBody.setVisibility(View.VISIBLE);
@@ -293,6 +281,8 @@ public class ConversationAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                         String url = "http://maps.google.com/maps/api/staticmap?center=" + latitude + "," + longitude + "&zoom=15&size=200x200&sensor=false";
                         Glide.with(mContext).load(url)
                                 .thumbnail(0.5f)
+                                .apply(new RequestOptions()
+                                .placeholder(R.drawable.location))
                                 .into(receivedHolder.locationViewForAttachment);
                         final String finalLatitude = latitude;
                         final String finalLongitude = longitude;
@@ -638,6 +628,47 @@ public class ConversationAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         }
     }
 
+
+    public void downloadMessage(Message message, final ImageView view, final ProgressBar progressBar, final TextView progressText){
+        ApplozicConversation.downloadMessage(mContext, message, new MediaDownloadProgressHandler() {
+            @Override
+            public void onDownloadStarted() {
+                Toast.makeText(mContext, "Downloading", Toast.LENGTH_SHORT).show();
+                progressBar.setVisibility(View.VISIBLE);
+                view.setVisibility(View.VISIBLE);
+                progressBar.setMax(100);
+                progressBar.setProgress(0);
+                progressBar.setSecondaryProgress(100);
+                progressBar.setProgressDrawable(mContext.getResources().getDrawable(R.drawable.circular_progress_bar));
+                progressText.setVisibility(View.VISIBLE);
+            }
+
+            @Override
+            public void onProgressUpdate(int percentage, ApplozicException e) {
+                progressBar.setProgress(percentage);
+                progressText.setText(percentage + " %");
+            }
+
+            @Override
+            public void onCompleted(Message message, ApplozicException e) {
+                if(e==null && message != null){
+                    progressBar.setVisibility(View.GONE);
+                    progressText.setVisibility(View.GONE);
+                    String path = message.getFilePaths().get(0);
+                    if(message.getAttachmentType().equals(Message.VIDEO)){
+                        Glide.with(mContext).load(Uri.fromFile(new File(path))).thumbnail(0.5f).into(view);
+                    }else {
+                        Glide.with(mContext).load(path).
+                                thumbnail(0.5f).
+                                into(view);
+                    }
+                }
+            }
+        });
+    }
+
+
+
     private static boolean showOnce = false;
     private static double startTime = 0;
     private static double finalTime = 0;
@@ -844,6 +875,7 @@ public class ConversationAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         ImageView imageViewForAttachment;
         LinearLayout attachmentView;
         ProgressBar attachmentProgress;
+        TextView attachmentProgressText;
         ImageView videoViewForAttachment;
         ImageView locationViewForAttachment;
 
@@ -868,6 +900,7 @@ public class ConversationAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             imageViewForAttachment = itemView.findViewById(R.id.preview);
             attachmentView = itemView.findViewById(R.id.sender_attachment_view);
             attachmentProgress = itemView.findViewById(R.id.attachment_progress_bar);
+            attachmentProgressText = itemView.findViewById(R.id.attachment_progress_bar_text);
             videoViewForAttachment = itemView.findViewById(R.id.attachment_video);
             locationViewForAttachment = itemView.findViewById(R.id.attachment_location_thumbnail);
 

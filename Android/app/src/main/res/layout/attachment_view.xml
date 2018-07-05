@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:layout_margin="20dp">
 
     <ImageView
         android:id="@+id/preview"
@@ -9,9 +10,8 @@
         android:layout_height="200dp"
         android:layout_centerInParent="true"
         android:gravity="center"
-        android:maxWidth="240dp"
-        android:maxHeight="200dp"
         android:visibility="gone"
+        android:scaleType="centerCrop"
         android:adjustViewBounds="true"
         android:src="@drawable/image"/>
 
@@ -43,6 +43,7 @@
         android:layout_height="200dp"
         android:id="@+id/attachment_video"
         android:layout_centerInParent="true"
+        android:scaleType="centerCrop"
         android:src="@drawable/video"
         android:gravity="center"
         android:visibility="gone"/>
@@ -53,16 +54,15 @@
         android:layout_height="200dp"
         android:layout_centerInParent="true"
         android:gravity="center"
-        android:maxWidth="240dp"
-        android:maxHeight="200dp"
+        android:scaleType="centerCrop"
         android:visibility="gone"
-        android:adjustViewBounds="true"
         android:src="@drawable/location"/>
 
     <RelativeLayout
         android:id="@+id/attachment_audio_layout"
         android:layout_width="200dp"
         android:layout_height="200dp"
+        android:layout_centerInParent="true"
         android:gravity="center"
         android:visibility="gone">
 

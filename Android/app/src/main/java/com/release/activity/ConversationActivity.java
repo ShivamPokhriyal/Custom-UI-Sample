@@ -56,7 +56,7 @@ import java.util.List;
 /**
  * This is an activity to show detailed conversation for any user or group.
  */
-public class ConversationActivity extends AppCompatActivity implements ApplozicUIListener, ActivityCompat.OnRequestPermissionsResultCallback{
+public class ConversationActivity extends AppCompatActivity implements ApplozicUIListener, ActivityCompat.OnRequestPermissionsResultCallback {
 
     private RecyclerView recyclerView;
     private SwipeRefreshLayout swipeRefreshLayout;
@@ -77,41 +77,8 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_conversation);
 
-        Intent intent = getIntent();
-        Bundle bundle = intent.getExtras();
-        if (bundle != null) {
-            for (String key : bundle.keySet()) {
-                Object value = bundle.get(key);
-                Log.d(TAG+" CHECKING", String.format("%s %s (%s)", key,
-                        value.toString(), value.getClass().getName()));
-            }
+        processIntent();
 
-            if(intent.hasExtra("CHECK_INTENT")){
-                //from activity
-                type = intent.getStringExtra("TYPE");
-                if(type.equals("CHANNEL")){
-                    int channelId = intent.getIntExtra("ID",12345);
-                    getMessageListForChannel(channelId);
-                }else{
-                    String contactId = intent.getStringExtra("ID");
-                    getMessageListForContact(contactId);
-                }
-            }else{
-                //from notification
-                try {
-                    Message message = (Message) GsonUtils.getObjectFromJson(intent.getStringExtra("message_json"), Message.class);
-                    JSONObject messageJson = new JSONObject(intent.getStringExtra("message_json"));
-                    if(messageJson.has("groupId")){
-                        //group
-                        getMessageListForChannel(messageJson.getInt("groupId"));
-                    }else{
-                        getMessageListForContact(messageJson.getString("contactIds"));
-                    }
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
 //        getSupportActionBar().setTitle(getIntent().getStringExtra("NAME"));
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setDisplayShowHomeEnabled(true);
@@ -124,7 +91,7 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
 
         LinearLayoutManager manager = new LinearLayoutManager(this);
         manager.setStackFromEnd(true);
-    //	manager.setReverseLayout(true);
+        //	manager.setReverseLayout(true);
         recyclerView.setLayoutManager(manager);
 
         recyclerView.setItemAnimator(new DefaultItemAnimator());
@@ -142,14 +109,13 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
         sendTextButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(TextUtils.isEmpty(sendMessageContent.getText())){
-                    Toast.makeText(ConversationActivity.this,"Empty Text",Toast.LENGTH_SHORT).show();
-                }
-                else{
+                if (TextUtils.isEmpty(sendMessageContent.getText())) {
+                    Toast.makeText(ConversationActivity.this, "Empty Text", Toast.LENGTH_SHORT).show();
+                } else {
                     //
-                    if(type.equalsIgnoreCase("Contact")){
+                    if (type.equalsIgnoreCase("Contact")) {
                         new MessageBuilder(ConversationActivity.this).setMessage(sendMessageContent.getText().toString()).setTo(messageList.get(0).getContactIds()).send();
-                    }else{
+                    } else {
                         new MessageBuilder(ConversationActivity.this).setMessage(sendMessageContent.getText().toString()).setGroupId(messageList.get(0).getGroupId()).send();
                     }
                 }
@@ -173,10 +139,10 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
         swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                if(type.equalsIgnoreCase("Contact")){
+                if (type.equalsIgnoreCase("Contact")) {
                     Message message = messageList.get(0);
                     loadNextContactList(message);
-                }else{
+                } else {
                     Message message = messageList.get(0);
                     loadNextChannelList(message);
                 }
@@ -186,25 +152,66 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
         /**
          * Ask for permission
          */
-        if(Build.VERSION.SDK_INT>= Build.VERSION_CODES.LOLLIPOP){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             showRunTimePermission();
         }
     }
 
-    public void setMessageList(List<Message> messages){
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        Log.d("Coming Here", "Check Yes");
+        processIntent();
+    }
+
+    private void processIntent() {
+        Intent intent = getIntent();
+        Bundle bundle = intent.getExtras();
+        if (bundle != null) {
+            for (String key : bundle.keySet()) {
+                Object value = bundle.get(key);
+                Log.d(TAG + " CHECKING", String.format("%s %s (%s)", key,
+                        value.toString(), value.getClass().getName()));
+            }
+
+            if (intent.hasExtra("CHECK_INTENT")) {
+                //from activity
+                type = intent.getStringExtra("TYPE");
+                if (type.equals("CHANNEL")) {
+                    int channelId = intent.getIntExtra("ID", 12345);
+                    getMessageListForChannel(channelId);
+                } else {
+                    String contactId = intent.getStringExtra("ID");
+                    getMessageListForContact(contactId);
+                }
+            } else {
+                //from notification
+                Message message = (Message) GsonUtils.getObjectFromJson(intent.getStringExtra("message_json"), Message.class);
+//
+                if (message.isGroupMessage()) {
+                    getMessageListForChannel(message.getGroupId());
+                } else {
+                    getMessageListForContact(message.getContactIds());
+                }
+            }
+        }
+    }
+
+    public void setMessageList(List<Message> messages) {
         messageList = messages;
         conversationAdapter = new ConversationAdapter(this, messageList);
         recyclerView.setAdapter(conversationAdapter);
         conversationAdapter.notifyDataSetChanged();
     }
 
-    public void getMessageListForContact(String contactId){
+    public void getMessageListForContact(String contactId) {
         final Contact contact = new AppContactService(ConversationActivity.this).getContactById(contactId);
         getSupportActionBar().setTitle(contact.getDisplayName());
         ApplozicConversation.getMessageListForContact(ConversationActivity.this, (new ContactDatabase(ConversationActivity.this)).getContactById(contactId), null, new MessageListHandler() {
             @Override
             public void onResult(List<Message> messageList, ApplozicException e) {
-                if(e != null){
+                if (e != null) {
                 }
                 MobiComConversationService mobiComConversationService = new MobiComConversationService(ConversationActivity.this);
                 mobiComConversationService.read(contact, null);
@@ -213,13 +220,13 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
         });
     }
 
-    public void getMessageListForChannel(int channelId){
+    public void getMessageListForChannel(int channelId) {
         final Channel channel = ChannelService.getInstance(ConversationActivity.this).getChannelInfo(channelId);
         getSupportActionBar().setTitle(channel.getName());
         ApplozicConversation.getMessageListForChannel(ConversationActivity.this, ChannelDatabaseService.getInstance(ConversationActivity.this).getChannelByChannelKey(channelId), null, new MessageListHandler() {
             @Override
             public void onResult(List<Message> messageList, ApplozicException e) {
-                if(e != null){
+                if (e != null) {
                 }
                 MobiComConversationService mobiComConversationService = new MobiComConversationService(ConversationActivity.this);
                 mobiComConversationService.read(null, channel);
@@ -228,7 +235,7 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
         });
     }
 
-    public void sendAttachment(){
+    public void sendAttachment() {
         Intent intent = new Intent();
         intent.setType("image/*");
         intent.setAction(Intent.ACTION_GET_CONTENT);
@@ -238,59 +245,59 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
         otherIntent.setType("image/* video/* audio/*");
 
         Intent chooserIntent = Intent.createChooser(intent, "Select Picture");
-        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS,new Intent[]{otherIntent});
+        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{otherIntent});
 
         startActivityForResult(chooserIntent, PICK_FILE);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if(requestCode == PICK_FILE && resultCode == RESULT_OK && data != null){
-                Log.d("Checking Attachment ", "Is being called");
+        if (requestCode == PICK_FILE && resultCode == RESULT_OK && data != null) {
+            Log.d("Checking Attachment ", "Is being called");
 
             Uri selectedUri = data.getData();
-            String[] columns = { MediaStore.Images.Media.DATA,
-                    MediaStore.Images.Media.MIME_TYPE };
+            String[] columns = {MediaStore.Images.Media.DATA,
+                    MediaStore.Images.Media.MIME_TYPE};
 
             Cursor cursor1 = getContentResolver().query(selectedUri, columns, null, null, null);
             cursor1.moveToFirst();
 
-            int pathColumnIndex     = cursor1.getColumnIndex( columns[0] );
-            int mimeTypeColumnIndex = cursor1.getColumnIndex( columns[1] );
+            int pathColumnIndex = cursor1.getColumnIndex(columns[0]);
+            int mimeTypeColumnIndex = cursor1.getColumnIndex(columns[1]);
 
             String contentPath = cursor1.getString(pathColumnIndex);
-            String mimeType    = cursor1.getString(mimeTypeColumnIndex);
+            String mimeType = cursor1.getString(mimeTypeColumnIndex);
             cursor1.close();
 
-            String filePath="";
+            String filePath = "";
             Uri selectedFile = data.getData();
 
-            if(mimeType.startsWith("image")) {
+            if (mimeType.startsWith("image")) {
                 Log.d("Checking Attachment ", "Is IMAGE");
                 String filePathColumn[] = {MediaStore.Images.Media.DATA};
                 filePath = getFilePathFromChoosenFile(selectedFile, filePathColumn);
-            } else if(mimeType.startsWith("video")) {
+            } else if (mimeType.startsWith("video")) {
                 Log.d("Checking Attachment ", "Is VIDEO");
                 String filePathColumn[] = {MediaStore.Video.Media.DATA};
                 filePath = getFilePathFromChoosenFile(selectedFile, filePathColumn);
-            } else if(mimeType.startsWith("audio")){
+            } else if (mimeType.startsWith("audio")) {
                 Log.d("Checking Attachment ", "Is AUDIO");
                 String filePathColumn[] = {MediaStore.Audio.Media.DATA};
                 filePath = getFilePathFromChoosenFile(selectedFile, filePathColumn);
             }
 
             Log.d("Attachment ", filePath);
-            if(type.equalsIgnoreCase("Contact")){
+            if (type.equalsIgnoreCase("Contact")) {
                 //This is a contact
                 sendAttachmentToContact(filePath);
-            }else{
+            } else {
                 //This is a group
                 sendAttachmentToGroup(filePath);
             }
         }
     }
 
-    private String getFilePathFromChoosenFile(Uri selectedFile, String filePathColumn[]){
+    private String getFilePathFromChoosenFile(Uri selectedFile, String filePathColumn[]) {
         Cursor cursor = getContentResolver().query(selectedFile, filePathColumn, null, null, null);
         cursor.moveToFirst();
         int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
@@ -299,7 +306,7 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
         return filePath;
     }
 
-    private void sendAttachmentToContact(String filePath){
+    private void sendAttachmentToContact(String filePath) {
         new MessageBuilder(ConversationActivity.this)
                 .setContentType(Message.ContentType.ATTACHMENT.getValue())
                 .setTo(messageList.get(0).getContactIds())
@@ -332,7 +339,7 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
                 });
     }
 
-    private void sendAttachmentToGroup(String filePath){
+    private void sendAttachmentToGroup(String filePath) {
         new MessageBuilder(ConversationActivity.this)
                 .setContentType(Message.ContentType.ATTACHMENT.getValue())
                 .setGroupId(messageList.get(0).getGroupId())
@@ -342,7 +349,7 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()){
+        switch (item.getItemId()) {
             case android.R.id.home:
                 Intent parentIntent = NavUtils.getParentActivityIntent(this);
                 parentIntent.setFlags(Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
@@ -357,10 +364,10 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
      * This method checks permission for writing to external storage at runtime if device is using android version above Marshmellow.
      * This checking is done at runtime, if permission is already given nothing happens otherwise we ask for permission.
      */
-    public void showRunTimePermission(){
-        Log.d("Permission","Checinkg");
-        if(ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED){
+    public void showRunTimePermission() {
+        Log.d("Permission", "Checinkg");
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
             requestStoragePermission();
         }
     }
@@ -368,25 +375,25 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
     /**
      * This method asks permission for writing to external storage at runtime.
      */
-    public void requestStoragePermission(){
+    public void requestStoragePermission() {
         final String permission[] = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE};
-        if(ActivityCompat.shouldShowRequestPermissionRationale(this,Manifest.permission.WRITE_EXTERNAL_STORAGE)){
-            Snackbar.make(layout,"External Storage Permission",Snackbar.LENGTH_INDEFINITE).
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+            Snackbar.make(layout, "External Storage Permission", Snackbar.LENGTH_INDEFINITE).
                     setAction("YES", new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    ActivityCompat.requestPermissions(ConversationActivity.this,permission,REQUEST_CODE);
-                }
-            }).show();
-        }else{
-            ActivityCompat.requestPermissions(this,permission,REQUEST_CODE);
+                        @Override
+                        public void onClick(View view) {
+                            ActivityCompat.requestPermissions(ConversationActivity.this, permission, REQUEST_CODE);
+                        }
+                    }).show();
+        } else {
+            ActivityCompat.requestPermissions(this, permission, REQUEST_CODE);
         }
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if(requestCode == REQUEST_CODE){
-                Snackbar.make(layout,"permission granted",Snackbar.LENGTH_SHORT).show();
+        if (requestCode == REQUEST_CODE) {
+            Snackbar.make(layout, "permission granted", Snackbar.LENGTH_SHORT).show();
         }
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
     }
@@ -394,17 +401,18 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
     /**
      * This method implements Pagination, load next 60 messages for a particular contact.
      * It calls onItemsLoadComplete after fetching messages.
+     *
      * @param message Contains information about client id.
      */
-    public void loadNextContactList(final Message message){
+    public void loadNextContactList(final Message message) {
         ApplozicConversation.getMessageListForContact(this, (new ContactDatabase(this)).getContactById(message.getContactIds()), messageList.get(0).getCreatedAtTime(), new MessageListHandler() {
             @Override
             public void onResult(List<Message> listMessage, ApplozicException e) {
-                if(e==null) {
+                if (e == null) {
                     messageList.addAll(0, listMessage);
-//                    conversationAdapter.notifyItemRangeInserted(0, listMessage.size());
-//                    conversationAdapter.notifyItemChanged(listMessage.size());
-                    conversationAdapter.notifyDataSetChanged();
+                    conversationAdapter.notifyItemRangeInserted(0, listMessage.size());
+                    conversationAdapter.notifyItemChanged(listMessage.size());
+//                    conversationAdapter.notifyDataSetChanged();
                 }
             }
         });
@@ -414,13 +422,14 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
     /**
      * This method implements Pagination, load next 60 messages for channel.
      * It calls onItemsLoadComplete after fetching messages.
+     *
      * @param message It contains information about the group.
      */
-    public void loadNextChannelList(Message message){
+    public void loadNextChannelList(Message message) {
         ApplozicConversation.getMessageListForChannel(this, ChannelDatabaseService.getInstance(this).getChannelByChannelKey(message.getGroupId()), messageList.get(0).getCreatedAtTime(), new MessageListHandler() {
             @Override
             public void onResult(List<Message> listMessage, ApplozicException e) {
-                if(e == null) {
+                if (e == null) {
                     messageList.addAll(0, listMessage);
                     conversationAdapter.notifyItemRangeInserted(0, listMessage.size());
                     conversationAdapter.notifyItemChanged(listMessage.size());
@@ -430,24 +439,25 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
         swipeRefreshLayout.setRefreshing(false);
     }
 
-    public boolean isMessageForAdapter(Message message){
-        if(message.isGroupMessage()){
-            if(messageList.get(0).isGroupMessage()){
-                if(message.getGroupId().equals(messageList.get(0).getGroupId())){
+    public boolean isMessageForAdapter(Message message) {
+        if (message.isGroupMessage()) {
+            if (messageList.get(0).isGroupMessage()) {
+                if (message.getGroupId().equals(messageList.get(0).getGroupId())) {
                     return true;
 
-                }else{return false;
+                } else {
+                    return false;
                 }
-            }else{
+            } else {
                 return false;
             }
-        }else{
-            if(messageList.get(0).isGroupMessage()){
+        } else {
+            if (messageList.get(0).isGroupMessage()) {
                 return false;
-            }else{
-                if(message.getTo().equals(messageList.get(0).getTo())){
+            } else {
+                if (message.getTo().equals(messageList.get(0).getTo())) {
                     return true;
-                }else{
+                } else {
                     return false;
                 }
             }
@@ -456,10 +466,11 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
 
     /**
      * This method is used to add a new message to adapter when it is sent from device.
+     *
      * @param message This is the message sent by user
      */
-    public void updateAdapterOnSent(Message message){
-        if(isMessageForAdapter(message)) {
+    public void updateAdapterOnSent(Message message) {
+        if (isMessageForAdapter(message)) {
             messageList.add(message);
             conversationAdapter.notifyDataSetChanged();
             sendMessageContent.getText().clear();
@@ -467,10 +478,10 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
         }
     }
 
-    public void updateAdapterOnDelivered(Message message){
+    public void updateAdapterOnDelivered(Message message) {
         //check message in message list
         int index = messageList.indexOf(message);
-        if(index != -1){
+        if (index != -1) {
             messageList.set(index, message);
             conversationAdapter.notifyDataSetChanged();
         }
@@ -489,15 +500,15 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
         }*/
     }
 
-    public void updateSeenStatus(String userId){
+    public void updateSeenStatus(String userId) {
         Log.d("Check", "STarts HERE");
-        if(userId.equals(messageList.get(0).getTo())){
+        if (userId.equals(messageList.get(0).getTo())) {
 //            Log.d()
-            for(int i=messageList.size()-1;i>=0;i--){
-                if(messageList.get(i).getStatus() != Message.Status.DELIVERED_AND_READ.getValue()){
+            for (int i = messageList.size() - 1; i >= 0; i--) {
+                if (messageList.get(i).getStatus() != Message.Status.DELIVERED_AND_READ.getValue()) {
                     messageList.get(i).setStatus(Message.Status.DELIVERED_AND_READ.getValue());
-                }else{
-                    Log.d("Check ","Message "+messageList.get(i).getMessage()+" Status "+messageList.get(i).getStatus());
+                } else {
+                    Log.d("Check ", "Message " + messageList.get(i).getMessage() + " Status " + messageList.get(i).getStatus());
                     break;
                 }
             }
@@ -523,31 +534,32 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
     public void onMessageSent(Message message) {
 //        updateAdapter(message);
         Log.d("Checking Sent", ".................................Sending...................................");
-        Log.d("Checking Sent","Message "+message);
-        Log.d("Checking Sent","Status "+message.getStatus());
+        Log.d("Checking Sent", "Message " + message);
+        Log.d("Checking Sent", "Status " + message.getStatus());
+        message.setSentToServer(true);
         updateAdapterOnDelivered(message);
     }
 
     @Override
     public void onMessageReceived(Message message) {
         Log.d("Checking Reception", "..................................Receiving...............................");
-        Log.d("Checking Reception","Message "+message.getMessage());
-        Log.d("Checking Reception","Status "+message.getStatus());
+        Log.d("Checking Reception", "Message " + message.getMessage());
+        Log.d("Checking Reception", "Status " + message.getStatus());
         updateAdapterOnSent(message);
     }
 
 
     @Override
     public void onLoadMore(boolean loadMore) {
-        Log.d("Checking ", "..................................." + "LOAD MORE CALLED" + "..................................." );
+        Log.d("Checking ", "..................................." + "LOAD MORE CALLED" + "...................................");
     }
 
     @Override
     public void onMessageSync(Message message, String key) {
-        Log.d("Checking Syncing","............................Syncing.........................................");
-        Log.d("Checking Syncing","Message "+message.toString());
-        Log.d("Checking Syncing","Status "+message.getStatus());
-        if(message.isTypeOutbox()){
+        Log.d("Checking Syncing", "............................Syncing.........................................");
+        Log.d("Checking Syncing", "Message " + message.toString());
+        Log.d("Checking Syncing", "Status " + message.getStatus());
+        if (message.isTypeOutbox()) {
             updateAdapterOnSent(message);
         }
 //        updateAdapterOnSent(message);
@@ -555,32 +567,32 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
 
     @Override
     public void onMessageDeleted(String messageKey, String userId) {
-        Log.d("Checking ", "..................................." + "DELETED CALLED" + "..................................." );
+        Log.d("Checking ", "..................................." + "DELETED CALLED" + "...................................");
     }
 
     @Override
     public void onMessageDelivered(Message message, String userId) {
-        Log.d("Checking Delivery",".................Delivered...........................");
-        Log.d("Checking Delivery","Delivered "+message.getMessage());
-        Log.d("Checking Delivery","Status "+message.getStatus());
+        Log.d("Checking Delivery", ".................Delivered...........................");
+        Log.d("Checking Delivery", "Delivered " + message.getMessage());
+        Log.d("Checking Delivery", "Status " + message.getStatus());
         updateAdapterOnDelivered(message);
     }
 
     @Override
     public void onAllMessagesDelivered(String userId) {
-        Log.d("Checking ", "..................................." + "ALL DELIVERED CALLED" + "..................................." );
+        Log.d("Checking ", "..................................." + "ALL DELIVERED CALLED" + "...................................");
     }
 
     @Override
     public void onAllMessagesRead(String userId) {
         //message read
         updateSeenStatus(userId);
-        Log.d("Checking ", "..................................." + "READ CALLED" + "..................................." );
+        Log.d("Checking ", "..................................." + "READ CALLED" + "...................................");
     }
 
     @Override
     public void onConversationDeleted(String userId, Integer channelKey, String response) {
-        Log.d("Checking ", "..................................." + "CONVO DEL CALLED" + "..................................." );
+        Log.d("Checking ", "..................................." + "CONVO DEL CALLED" + "...................................");
     }
 
     @Override
@@ -595,27 +607,27 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
 
     @Override
     public void onMqttDisconnected() {
-
+        Log.d("Checking","..................................." + "MQQQT DISCONNECTED" + "...................................");
     }
 
     @Override
     public void onChannelUpdated() {
-        Log.d("Checking ", "..................................." + "CAHNNEL UPDATED CALLED" + "..................................." );
+        Log.d("Checking ", "..................................." + "CAHNNEL UPDATED CALLED" + "...................................");
     }
 
     @Override
     public void onConversationRead(String userId, boolean isGroup) {
-        Log.d("Checking ", "..................................." + "CONVO READ CALLED" + "..................................." );
+        Log.d("Checking ", "..................................." + "CONVO READ CALLED" + "...................................");
     }
 
     @Override
     public void onUserDetailUpdated(String userId) {
-        Log.d("Checking ", "..................................." + "USER DETAIL CALLED" + "..................................." );
+        Log.d("Checking ", "..................................." + "USER DETAIL CALLED" + "...................................");
     }
 
     @Override
     public void onMessageMetadataUpdated(String keyString) {
-        Log.d("Checking ", "..................................." + "META DATA CALLED" + "..................................." );
+        Log.d("Checking ", "..................................." + "META DATA CALLED" + "...................................");
     }
 
 //    public void scrollToBottom(){

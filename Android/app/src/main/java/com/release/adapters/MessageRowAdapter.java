@@ -77,10 +77,7 @@ public class MessageRowAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
         switch (holder.getItemViewType()){
             case ONE_TO_ONE_CHAT:
                 final Contact contact = new AppContactService(mContext).getContactById(current.getContactIds());
-//                Log.d("Photo ","Contact "+contact.toString());
                 holder.smsReceiver.setText(contact.getDisplayName());
-//                if(contact.getUnreadCount()!=0)
-//                    holder.unreadSmsCount.setText(String.valueOf(contact.getUnreadCount()));
 
                 if(messageDatabaseService.getUnreadMessageCountForContact(contact.getUserId()) != 0){
                     Log.d("Still", String.valueOf(messageDatabaseService.getUnreadMessageCountForContact(contact.getUserId())));
@@ -155,8 +152,8 @@ public class MessageRowAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
                 holder.smsReceiver.setText(channel.getName());
 //                if(channel.getUnreadCount()!=0)
 //                    holder.unreadSmsCount.setText(String.valueOf(channel.getUnreadCount()));
-                if(messageDatabaseService.getUnreadMessageCountForChannel(messageList.get(0).getGroupId()) != 0)
-                    holder.unreadSmsCount.setText(String.valueOf(messageDatabaseService.getUnreadMessageCountForChannel(messageList.get(0).getGroupId())));
+                if(messageDatabaseService.getUnreadMessageCountForChannel(messageList.get(position).getGroupId()) != 0)
+                    holder.unreadSmsCount.setText(String.valueOf(messageDatabaseService.getUnreadMessageCountForChannel(messageList.get(position).getGroupId())));
                 if(channel.getImageUrl() == null || channel.getImageUrl().equalsIgnoreCase(null)) {
                     holder.contactPhoto.setImageResource(R.drawable.group_profile);
                 }
