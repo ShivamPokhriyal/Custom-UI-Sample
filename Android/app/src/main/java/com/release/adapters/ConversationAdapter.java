@@ -57,6 +57,8 @@ import java.util.concurrent.TimeUnit;
  * Created by shivam on 9/12/17.
  */
 
+//ConversationUISERVICE
+
 public class ConversationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private Context mContext;
@@ -73,6 +75,7 @@ public class ConversationAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         this.mContext = context;
         this.messageList = messages;
         Log.v("ow start", String.valueOf(messages.size()));
+
         fileClientService = new FileClientService(mContext);
         imageLoader = new ImageLoader(mContext, ImageUtils.getLargestScreenDimension((Activity) mContext)) {
             @Override
@@ -128,6 +131,11 @@ public class ConversationAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
     @Override
     public void onBindViewHolder(RecyclerView.ViewHolder mHolder, int position) {
         final Message message = messageList.get(position);
+
+        if(message.isTempDateType()){
+            Log.d("CheckMessage T",message.toString());
+        }
+
         switch (mHolder.getItemViewType()) {
 
             case MESSAGE_TYPE_SENT:
@@ -783,6 +791,7 @@ public class ConversationAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         } else {
             return MESSAGE_TYPE_RECEIVED;
         }
+
     }
 
     /**

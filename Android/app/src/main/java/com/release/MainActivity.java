@@ -2,6 +2,8 @@ package com.release;
 
 import android.app.ProgressDialog;
 import android.net.Uri;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.content.Context;
@@ -28,6 +30,7 @@ import com.applozic.mobicomkit.listners.AlLogoutHandler;
 import com.applozic.mobicomkit.listners.MessageListHandler;
 import com.applozic.mobicommons.people.channel.Channel;
 import com.applozic.mobicommons.people.contact.Contact;
+import com.release.fragments.InitiateDialogFragment;
 import com.release.fragments.MainContainerFragment;
 import com.release.fragments.MessageListFragment;
 
@@ -65,6 +68,18 @@ public class MainActivity extends AppCompatActivity  implements NavigationDrawer
         getSupportActionBar().setTitle(title);
     }
 
+    public void initiateChatClick(View v) {
+        FragmentManager supportFragmentManager = getSupportFragmentManager();
+        DialogFragment fragment = new InitiateDialogFragment();
+        FragmentTransaction fragmentTransaction = supportFragmentManager
+                .beginTransaction();
+        Fragment prev = getSupportFragmentManager().findFragmentByTag("InitiateDialogFragment");
+        if (prev != null) {
+            fragmentTransaction.remove(prev);
+        }
+        fragmentTransaction.addToBackStack(null);
+        fragment.show(fragmentTransaction, "InitiateDialogFragment");
+    }
 
     @Override
     public void onNavigationDrawerItemSelected(int position) {

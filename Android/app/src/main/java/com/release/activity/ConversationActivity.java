@@ -19,7 +19,9 @@ import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
@@ -34,6 +36,7 @@ import com.applozic.mobicomkit.api.conversation.ApplozicConversation;
 import com.applozic.mobicomkit.api.conversation.Message;
 import com.applozic.mobicomkit.api.conversation.MessageBuilder;
 import com.applozic.mobicomkit.api.conversation.MobiComConversationService;
+import com.applozic.mobicomkit.api.people.UserIntentService;
 import com.applozic.mobicomkit.channel.database.ChannelDatabaseService;
 import com.applozic.mobicomkit.channel.service.ChannelService;
 import com.applozic.mobicomkit.contact.AppContactService;
@@ -83,6 +86,8 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
     private Channel mChannel;
     private Contact mContact;
 
+    private boolean typingStarted = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -120,6 +125,39 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
         sendTextButton = findViewById(R.id.message_send_button);
         sendAttachmentButton = findViewById(R.id.attachment_send_button);
 
+        sendMessageContent.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                try {
+                    if (!TextUtils.isEmpty(s.toString()) && s.toString().trim().length() > 0 && !typingStarted) {
+                        typingStarted = true;
+                        if (mContact != null || (mChannel != null && !Channel.GroupType.OPEN.getValue().equals(mChannel.getType()))) {
+                            Applozic.publishTypingStatus(ConversationActivity.this, mChannel, mContact, true);
+                        }
+                    } else if (s.toString().trim().length() == 0 && typingStarted) {
+                        typingStarted = false;
+                        if (mContact != null || (mChannel != null && !Channel.GroupType.OPEN.getValue().equals(mChannel.getType()))) {
+                            Applozic.publishTypingStatus(ConversationActivity.this, mChannel, mContact, false);
+                        }
+                    }
+
+                } catch (Exception e) {
+
+                }
+
+            }
+        });
+
         sendTextButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -128,9 +166,9 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
                 } else {
                     //
                     if (type.equalsIgnoreCase("Contact")) {
-                        new MessageBuilder(ConversationActivity.this).setMessage(sendMessageContent.getText().toString().trim()).setTo(messageList.get(0).getContactIds()).send();
+                        new MessageBuilder(ConversationActivity.this).setMessage(sendMessageContent.getText().toString().trim()).setTo(mContact.getContactIds()).send();
                     } else {
-                        new MessageBuilder(ConversationActivity.this).setMessage(sendMessageContent.getText().toString().trim()).setGroupId(messageList.get(0).getGroupId()).send();
+                        new MessageBuilder(ConversationActivity.this).setMessage(sendMessageContent.getText().toString().trim()).setGroupId(mChannel.getKey()).send();
                     }
                 }
             }
@@ -153,12 +191,17 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
         swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                if (type.equalsIgnoreCase("Contact")) {
-                    Message message = messageList.get(0);
-                    loadNextContactList(message);
-                } else {
-                    Message message = messageList.get(0);
-                    loadNextChannelList(message);
+                if(messageList.size() == 0){
+                    Toast.makeText(ConversationActivity.this, "NO Conversation", Toast.LENGTH_SHORT).show();
+                    swipeRefreshLayout.setRefreshing(false);
+                }else {
+                    if (type.equalsIgnoreCase("Contact")) {
+                        Message message = messageList.get(0);
+                        loadNextContactList(message);
+                    } else {
+                        Message message = messageList.get(0);
+                        loadNextChannelList(message);
+                    }
                 }
             }
         });
@@ -183,12 +226,6 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
         Intent intent = getIntent();
         Bundle bundle = intent.getExtras();
         if (bundle != null) {
-            for (String key : bundle.keySet()) {
-                Object value = bundle.get(key);
-                Log.d(TAG + " CHECKING", String.format("%s %s (%s)", key,
-                        value.toString(), value.getClass().getName()));
-            }
-
             if (intent.hasExtra("CHECK_INTENT")) {
                 //from activity
                 type = intent.getStringExtra("TYPE");
@@ -223,6 +260,11 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
     public void getMessageListForContact(String contactId) {
         final Contact contact = new AppContactService(ConversationActivity.this).getContactById(contactId);
         mContact = contact;
+        if (contact != null) {
+            Intent intent = new Intent(ConversationActivity.this, UserIntentService.class);
+            intent.putExtra(UserIntentService.USER_ID, contact.getUserId());
+            UserIntentService.enqueueWork(ConversationActivity.this, intent);
+        }
         toolbarTitle.setText(contact.getDisplayName());
         toolbarStatus.setVisibility(View.VISIBLE);
         toolbarStatus.setText(mContact.isOnline()?"ONLINE":"Last seen: "+DateUtils.getDateAndTimeForLastSeen(mContact.getLastSeenAt()));
@@ -328,7 +370,7 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
     private void sendAttachmentToContact(String filePath) {
         new MessageBuilder(ConversationActivity.this)
                 .setContentType(Message.ContentType.ATTACHMENT.getValue())
-                .setTo(messageList.get(0).getContactIds())
+                .setTo(mContact.getContactIds())
                 .setFilePath(filePath)
                 .send(new MediaUploadProgressHandler() {
                     @Override
@@ -361,7 +403,7 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
     private void sendAttachmentToGroup(String filePath) {
         new MessageBuilder(ConversationActivity.this)
                 .setContentType(Message.ContentType.ATTACHMENT.getValue())
-                .setGroupId(messageList.get(0).getGroupId())
+                .setGroupId(mChannel.getKey())
                 .setFilePath(filePath)
                 .send();
     }
@@ -428,14 +470,18 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
             @Override
             public void onResult(List<Message> listMessage, ApplozicException e) {
                 if (e == null) {
+                    if(listMessage.size() == 0){
+                        Toast.makeText(ConversationActivity.this, "No more messages to load", Toast.LENGTH_SHORT).show();
+                    }
                     messageList.addAll(0, listMessage);
                     conversationAdapter.notifyItemRangeInserted(0, listMessage.size());
                     conversationAdapter.notifyItemChanged(listMessage.size());
 //                    conversationAdapter.notifyDataSetChanged();
                 }
+
+                swipeRefreshLayout.setRefreshing(false);
             }
         });
-        swipeRefreshLayout.setRefreshing(false);
     }
 
     /**
@@ -449,13 +495,16 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
             @Override
             public void onResult(List<Message> listMessage, ApplozicException e) {
                 if (e == null) {
+                    if(listMessage.size() == 0){
+                        Toast.makeText(ConversationActivity.this, "No more messages to load", Toast.LENGTH_SHORT).show();
+                    }
                     messageList.addAll(0, listMessage);
                     conversationAdapter.notifyItemRangeInserted(0, listMessage.size());
                     conversationAdapter.notifyItemChanged(listMessage.size());
                 }
+                swipeRefreshLayout.setRefreshing(false);
             }
         });
-        swipeRefreshLayout.setRefreshing(false);
     }
 
     public boolean isMessageForAdapter(Message message) {
@@ -680,7 +729,7 @@ public class ConversationActivity extends AppCompatActivity implements ApplozicU
 
     @Override
     public void onChannelUpdated() {
-        Log.d("Checking ", "..................................." + "CAHNNEL UPDATED CALLED" + "...................................");
+        Log.d("Checking ", "..................................." + "CHANNEL UPDATED CALLED" + "...................................");
     }
 
     @Override
